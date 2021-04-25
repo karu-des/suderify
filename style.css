@@ -17,6 +17,7 @@ html, body{
 
 body {
     background-image: linear-gradient(to bottom right, var(--main-background-color), var(--sub-background-color));
+    background-repeat: no-repeat;
 }
 
 .flex-box {
