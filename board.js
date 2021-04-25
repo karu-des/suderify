@@ -88,10 +88,7 @@ class Board {
     }
 
     removeOldBoard() {
-        let board = document.getElementById("board");
-        while (board.firstChild) {
-            board.removeChild(board.firstChild);
-        }
+        document.getElementById("board").innerHTML = "";
     }
 }
 
