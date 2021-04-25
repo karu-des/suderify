@@ -1,0 +1,67 @@
+:root {
+    --border-width: 2px;
+    --border-color: rgb(158, 116, 200);
+    --cell-empty-bg: white;
+    --cell-given-bg: rgb(230, 243, 255);
+    --cell-solved-bg: rgb(245, 250, 255);
+    --cell-unsolved-bg: rgb(245, 239, 255);
+    --cell-solved-text: black;
+    --cell-font-size: 25px;
+    --main-background-color: rgb(255, 195, 204);
+    --sub-background-color: white
+}
+
+html{
+    height: 100%;
+}
+
+body {
+    background-image: linear-gradient(to bottom right, var(--main-background-color), var(--sub-background-color));
+}
+
+.flex-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding-top: 50px;
+}
+
+#board {
+    display: grid;
+    grid-template-columns: repeat(9, 60px);
+    grid-template-rows: repeat(9, 60px);
+    border-bottom: var(--border-width) solid var(--border-color);
+    border-left: var(--border-width) solid var(--border-color);
+    border-collapse: collapse;
+}
+
+.cell {
+    background-color: var(--cell-empty-bg);
+    border-top: var(--border-width) solid var(--border-color);
+    border-right: var(--border-width) solid var(--border-color);
+    padding-top: 15.5px;
+    font-size: var(--cell-font-size);
+    text-align: center;
+    border-collapse: collapse;
+    color: black;
+}
+
+.cell.given-val {
+    background-color: var(--cell-given-bg);
+}
+
+.cell.solved-val {
+    background-color: var(--cell-solved-bg);
+    color: var(--cell-solved-text);
+}
+
+.cell.unsolved-val-1-line {
+    background-color: var(--cell-unsolved-bg);
+}
+
+.cell.unsolved-val-2-line {
+    background-color: var(--cell-unsolved-bg);
+    padding: 0px;
+    word-break: break-all;
+}
