@@ -102,3 +102,9 @@ let emptySudoku = "-------------------------------------------------------------
 let unsolvableSudoku = "4----38----2----1----41-7---3---4---124-5---3---3---572-3-78----4----2--87-------"
 let atLeastOnePartSolveable = "45679382---2---------41-7---3---4---124-5---3---3---572-3-78----4----2--87-------"
 let board = new Board(sudoku);
+
+ClipReader.bind(function(format) {
+    let input = document.getElementById("sudokuInput");
+    input.value = format;
+    solveBoard();
+});
