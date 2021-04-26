@@ -47,7 +47,7 @@ class ClipboardReader {
         // Find and crop to borders
         let image = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
         let [xmin, xmax, ymin, ymax] = this.findBorders(image);
-        console.log("Crop from", xmin, ymin, "to", xmax, ymax);
+        // console.log("Crop from", xmin, ymin, "to", xmax, ymax);
         let canvas = document.createElement("canvas");
         canvas.width = canvas.height = this.CELL_SIZE * this.N;
         let newctx = canvas.getContext("2d");
@@ -58,7 +58,7 @@ class ClipboardReader {
         );
         ctx = newctx;
         // Convert to grayscale and featurize
-        const OFFSET = 5;
+        const OFFSET = 6;
         let cells = [];
         for (let row = 0; row < this.N; row++) {
             for (let col = 0; col < this.N; col++) {
@@ -89,10 +89,10 @@ class ClipboardReader {
                             this.CELL_SIZE,
                             this.CELL_SIZE
                         );
-                        for (let k = 0; k < this.CELL_SIZE; k++) {
+                        for (let k = OFFSET; k < this.CELL_SIZE - OFFSET; k++) {
                             queryImageData.data.set(
-                                imageData.data.subarray(k * this.CELL_SIZE * 4, (k + 1) * this.CELL_SIZE * 4),
-                                (k * (this.CELL_SIZE * mapping.length) + idx * this.CELL_SIZE) * 4
+                                imageData.data.subarray((k * this.CELL_SIZE + OFFSET) * 4, ((k + 1) * this.CELL_SIZE - OFFSET) * 4),
+                                (k * (this.CELL_SIZE * mapping.length) + idx * this.CELL_SIZE + OFFSET) * 4
                             );
                         }
                         break;
@@ -103,7 +103,9 @@ class ClipboardReader {
         }
         canvas = document.querySelector("#query");
         canvas.width = this.CELL_SIZE * mapping.length, canvas.height = this.CELL_SIZE;
-        canvas.getContext("2d").putImageData(queryImageData, 0, 0);
+        ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.putImageData(queryImageData, 0, 0);
         document.querySelector("#query-box").classList.add("querying");
         setTimeout(() => {
             let constmap = prompt("Are you a robot?\nEnter the digits", "123456789");
@@ -142,7 +144,7 @@ class ClipboardReader {
                 if (pixels / image.height > 0.8) {
                     lines.push(x);
                 } else if (lines.length) {
-                    var xmin = lines[Math.floor((lines.length - 1) / 2)];
+                    var xmin = lines.pop();
                     break;
                 }
             }
@@ -163,10 +165,11 @@ class ClipboardReader {
                 if (pixels / image.height > 0.8) {
                     lines.push(x);
                 } else if (lines.length) {
-                    var xmax = lines[Math.floor((lines.length - 1) / 2)];
+                    var xmax = lines.pop();
                     break;
                 }
             }
+            if (!lines.length) console.warn("Too bright");
         }
         { // y min
             let lines = [];
@@ -183,10 +186,11 @@ class ClipboardReader {
                 if (pixels / image.width > 0.8) {
                     lines.push(y);
                 } else if (lines.length) {
-                    var ymin = lines[Math.floor((lines.length - 1) / 2)];
+                    var ymin = lines.pop();
                     break;
                 }
             }
+            if (!lines.length) console.warn("Too bright");
         }
         { // y max
             let lines = [];
@@ -203,17 +207,19 @@ class ClipboardReader {
                 if (pixels / image.width > 0.8) {
                     lines.push(y);
                 } else if (lines.length) {
-                    var ymax = lines[Math.floor((lines.length - 1) / 2)];
+                    var ymax = lines.pop();
                     break;
                 }
             }
+            if (!lines.length) console.warn("Too bright");
         }
         return [xmin, xmax, ymin, ymax];
     }
 
     toGrayscale(box) {
         const index = (x, y) => 4 * (x + y * box.width);
-        const lightness = (r, g, b) => 0.5 * (Math.max(r, g, b) + Math.min(r, g, b));
+        // const lightness = (r, g, b) => 0.5 * (Math.max(r, g, b) + Math.min(r, g, b));
+        const lightness = (r, g, b) => Math.max(r, g, b);
         let gray = new Uint8ClampedArray(box.height * box.width);
         for (let y = 0; y < box.height; y++) {
             for (let x = 0; x < box.width; x++) {
@@ -261,6 +267,8 @@ class ClipboardReader {
         if ((bbox[2] - bbox[0]) * (bbox[3] - bbox[1]) < 0.02 * this.CELL_SIZE * this.CELL_SIZE) {
             return null;
         }
+        // Get baseline
+        let baseline = Math.min(...image);
         // Circle subsectors
         let center = [0.5 * (bbox[0] + bbox[2]), 0.5 * (bbox[1] + bbox[3])];
         let radius = 0;
@@ -286,7 +294,7 @@ class ClipboardReader {
                             || r > radius * (i + 1) / radii
                             || th < 2 * Math.PI * j / angles - Math.PI
                             || th > 2 * Math.PI * (j + 1) / angles - Math.PI) continue;
-                        feature += Math.max(1 - image.at(x, y) / this.THRESH, 0);
+                        feature += Math.max(1 - (image.at(x, y) - baseline) / this.THRESH, 0);
                         totalWeight += 1;
                     }
                 }
@@ -339,31 +347,32 @@ class ClipboardReader {
             maximalDist = minDist;
         }
         // Compress everything within a multiple of max distance (for <9 digits)
-        let threshold = maximalDist * 1.6 + 0.01; // Arbitrary
-        while (true) {
-            // Find closest pair
-            let minDist = threshold;
-            let minPair = null;
-            for (let i = 0; i < n; i++) {
-                for (let j = i + 1; j < n; j++) {
-                    if (group[i] == group[j]) continue;
-                    let dist = distance(data[i], data[j]);
-                    if (dist < minDist) {
-                        minDist = dist;
-                        minPair = [i, j];
-                    }
-                }
-            }
-            if (minPair == null) break;
-            minPair = [group[minPair[0]], group[minPair[1]]];
-            // Union
-            for (let i = 0; i < n; i++) {
-                if (group[i] == minPair[1]) {
-                    group[i] = minPair[0];
-                }
-            }
-            maximalDist = minDist;
-        }
+        let threshold = maximalDist * 1.0 + 0.01; // Arbitrary
+        // {
+        //     // Find closest pair
+        //     let minDist = threshold;
+        //     let minPair = null;
+        //     for (let i = 0; i < n; i++) {
+        //         for (let j = i + 1; j < n; j++) {
+        //             if (group[i] == group[j]) continue;
+        //             let dist = distance(data[i], data[j]);
+        //             if (dist < minDist) {
+        //                 minDist = dist;
+        //                 minPair = [i, j];
+        //             }
+        //         }
+        //     }
+        //     if (minPair != null) {
+        //         minPair = [group[minPair[0]], group[minPair[1]]];
+        //         // Union
+        //         for (let i = 0; i < n; i++) {
+        //             if (group[i] == minPair[1]) {
+        //                 group[i] = minPair[0];
+        //             }
+        //         }
+        //         maximalDist = minDist;
+        //     }
+        // }
         let minDist = Infinity;
         for (let i = 0; i < n; i++) {
             for (let j = i + 1; j < n; j++) {
@@ -374,7 +383,7 @@ class ClipboardReader {
                 }
             }
         }
-        console.log(this.CELL_SIZE, maximalDist, threshold, minDist);
+        // console.log(this.CELL_SIZE, maximalDist, threshold, minDist);
         return group;
     }
 }
